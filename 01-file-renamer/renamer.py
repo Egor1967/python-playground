@@ -22,13 +22,21 @@ def build_new_name(filename: str) -> str:
     return filename.replace(" ", "_").lower()
 
 
-def collect_renames(folder: Path, extension: str | None) -> list[tuple[Path, Path]]:
+def iter_files(folder: Path, recursive: bool):
+    if recursive:
+        yield from sorted(path for path in folder.rglob("*") if path.is_file())
+    else:
+        yield from sorted(path for path in folder.iterdir() if path.is_file())
+
+
+def collect_renames(
+    folder: Path,
+    extension: str | None,
+    recursive: bool,
+) -> list[tuple[Path, Path]]:
     planned = []
 
-    for item in sorted(folder.iterdir()):
-        if not item.is_file():
-            continue
-
+    for item in iter_files(folder, recursive):
         if extension is not None and item.suffix.lower() != extension:
             continue
 
@@ -55,6 +63,11 @@ def parse_args() -> argparse.Namespace:
         "--ext",
         help="Only process files with this extension, for example: txt or .txt",
     )
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Process files in subfolders recursively",
+    )
     return parser.parse_args()
 
 
@@ -71,7 +84,7 @@ def main() -> None:
         print(f"Error: path is not a folder: {folder}")
         raise SystemExit(1)
 
-    planned = collect_renames(folder, extension)
+    planned = collect_renames(folder, extension, args.recursive)
 
     if not planned:
         print("No files need renaming.")
@@ -80,18 +93,18 @@ def main() -> None:
     if not args.apply:
         print("Preview mode. No files were renamed.\n")
         for old_path, new_path in planned:
-            print(f"{old_path.name} -> {new_path.name}")
+            print(f"{old_path.relative_to(folder)} -> {new_path.relative_to(folder)}")
         return
 
     print("Apply mode. Renaming files...\n")
 
     for old_path, new_path in planned:
         if new_path.exists():
-            print(f"Skip: target already exists: {new_path.name}")
+            print(f"Skip: target already exists: {new_path.relative_to(folder)}")
             continue
 
         old_path.rename(new_path)
-        print(f"Renamed: {old_path.name} -> {new_path.name}")
+        print(f"Renamed: {old_path.relative_to(folder)} -> {new_path.relative_to(folder)}")
 
 
 if __name__ == "__main__":
