@@ -8,7 +8,7 @@ def build_new_name(filename: str) -> str:
     return filename.replace(" ", "_").lower()
 
 
-def collect_renames(folder: Path) -> list[tuple[Path, str]]:
+def collect_renames(folder: Path) -> list[tuple[Path, Path]]:
     planned = []
 
     for item in sorted(folder.iterdir()):
@@ -16,9 +16,10 @@ def collect_renames(folder: Path) -> list[tuple[Path, str]]:
             continue
 
         new_name = build_new_name(item.name)
+        new_path = item.with_name(new_name)
 
         if new_name != item.name:
-            planned.append((item, new_name))
+            planned.append((item, new_path))
 
     return planned
 
@@ -56,11 +57,19 @@ def main() -> None:
 
     if not args.apply:
         print("Preview mode. No files were renamed.\n")
-    else:
-        print("Apply mode is not implemented yet. Preview only.\n")
+        for old_path, new_path in planned:
+            print(f"{old_path.name} -> {new_path.name}")
+        return
 
-    for old_path, new_name in planned:
-        print(f"{old_path.name} -> {new_name}")
+    print("Apply mode. Renaming files...\n")
+
+    for old_path, new_path in planned:
+        if new_path.exists():
+            print(f"Skip: target already exists: {new_path.name}")
+            continue
+
+        old_path.rename(new_path)
+        print(f"Renamed: {old_path.name} -> {new_path.name}")
 
 
 if __name__ == "__main__":
