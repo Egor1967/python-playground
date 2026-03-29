@@ -4,15 +4,32 @@ import argparse
 from pathlib import Path
 
 
+def normalize_extension(ext: str | None) -> str | None:
+    if ext is None:
+        return None
+
+    ext = ext.strip().lower()
+    if not ext:
+        return None
+
+    if not ext.startswith("."):
+        ext = f".{ext}"
+
+    return ext
+
+
 def build_new_name(filename: str) -> str:
     return filename.replace(" ", "_").lower()
 
 
-def collect_renames(folder: Path) -> list[tuple[Path, Path]]:
+def collect_renames(folder: Path, extension: str | None) -> list[tuple[Path, Path]]:
     planned = []
 
     for item in sorted(folder.iterdir()):
         if not item.is_file():
+            continue
+
+        if extension is not None and item.suffix.lower() != extension:
             continue
 
         new_name = build_new_name(item.name)
@@ -34,12 +51,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Actually rename files instead of previewing changes",
     )
+    parser.add_argument(
+        "--ext",
+        help="Only process files with this extension, for example: txt or .txt",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     folder = Path(args.folder).expanduser().resolve()
+    extension = normalize_extension(args.ext)
 
     if not folder.exists():
         print(f"Error: folder does not exist: {folder}")
@@ -49,7 +71,7 @@ def main() -> None:
         print(f"Error: path is not a folder: {folder}")
         raise SystemExit(1)
 
-    planned = collect_renames(folder)
+    planned = collect_renames(folder, extension)
 
     if not planned:
         print("No files need renaming.")
